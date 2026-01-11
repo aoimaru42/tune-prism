@@ -9,7 +9,7 @@ use std::{
     cmp::{max, min},
     fs::File,
     ops::AddAssign,
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use super::error::{Result, TorchSnafu};
@@ -23,8 +23,8 @@ pub struct ModelConfig {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ModelInfo {
-    pub(crate) name: String,
-    pub(crate) config: ModelConfig,
+    pub name: String,
+    pub config: ModelConfig,
 }
 
 #[derive(Debug)]
@@ -32,6 +32,15 @@ pub struct Demucs {
     pub module: CModule,
     pub config: ModelConfig,
     pub device: Device,
+}
+
+/// モデルの遅延ロードを管理する構造体
+#[derive(Debug)]
+pub struct LazyModelLoader {
+    pub model_info: ModelInfo,
+    pub model_path: PathBuf,
+    pub device: Device,
+    pub loaded_model: Option<Demucs>,
 }
 
 pub fn models(path: &Path) -> Result<Vec<ModelInfo>> {
@@ -53,10 +62,13 @@ impl Demucs {
     pub fn init(path: &Path, info: &ModelInfo, device: Device) -> Result<Self> {
         let config = info.config.clone();
 
+        eprintln!("[Demucs::init] Loading model from: {:?}", path);
         let mut module = CModule::load(path).context(TorchSnafu)?;
 
+        eprintln!("[Demucs::init] Moving model to device: {:?}", device);
         module.to(device, tch::Kind::Float, false);
 
+        eprintln!("[Demucs::init] Model loaded successfully");
         Ok(Self {
             config,
             module,
@@ -78,8 +90,11 @@ impl Demucs {
             ApplyArgs {
                 shifts: 1,
                 split: true,
-                overlap: 0.25,
-                transition_power: 1.0,
+                // プツノイズを減らすため、overlapを増やしてtransition_powerを上げる
+                // overlap: 0.25 -> 0.5: セグメント間のオーバーラップを増やして境界を滑らかに
+                overlap: 0.5,
+                // transition_power: 1.0 -> 2.0: 遷移をより滑らかにしてプツノイズを減らす
+                transition_power: 2.0,
                 device: self.device,
                 segment: Fraction::new(39u64, 5u64),
             },
@@ -187,6 +202,38 @@ impl Demucs {
             dbg!(out.size());
 
             out
+        }
+    }
+}
+
+impl LazyModelLoader {
+    pub fn new(model_info: ModelInfo, model_path: PathBuf, device: Device) -> Self {
+        Self {
+            model_info,
+            model_path,
+            device,
+            loaded_model: None,
+        }
+    }
+
+    /// モデルをロードする（既にロード済みの場合は再利用）
+    pub fn get_or_load(&mut self) -> Result<&mut Demucs> {
+        if self.loaded_model.is_none() {
+            eprintln!("[LazyModelLoader] Loading model on demand...");
+            let model = Demucs::init(&self.model_path, &self.model_info, self.device)?;
+            self.loaded_model = Some(model);
+        } else {
+            eprintln!("[LazyModelLoader] Reusing already loaded model");
+        }
+        
+        Ok(self.loaded_model.as_mut().unwrap())
+    }
+
+    /// モデルを明示的にアンロードしてメモリを解放
+    pub fn unload(&mut self) {
+        if self.loaded_model.is_some() {
+            eprintln!("[LazyModelLoader] Unloading model to free memory");
+            self.loaded_model = None;
         }
     }
 }

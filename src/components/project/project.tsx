@@ -8,18 +8,18 @@ import {
     Grid,
     GridItem 
 } from "@chakra-ui/react"
-import { FiPlay, FiPause } from "react-icons/fi"
-import { FaAssistiveListeningSystems } from "react-icons/fa";
+import { FiPlay, FiPause, FiDownload } from "react-icons/fi"
+import { FaAssistiveListeningSystems, FaMicrophone } from "react-icons/fa";
 import { useEffect, useState } from "react"
 import { appWindow } from "@tauri-apps/api/window"
 import { convertFileSrc } from "@tauri-apps/api/tauri"
 import { getFileTypeFromPath, getFilenameFromPath } from "../../util/project"
 import WavesurferPlayer from "@wavesurfer/react"
-import TrackDetails from "./TrackDetails"
-import { createProject } from "../../functions/project";
+import { createProject, getAllProjects } from "../../functions/project";
 import { Project } from "../../store/project/types";
 import useProjectStore from "../../store/project";
-import { splitStems } from "../../functions/split";
+import { splitStems, splitVocalInstrumental } from "../../functions/split";
+import { downloadStemsAsZip } from "../../functions/download";
 import { startDrag } from "@crabnebula/tauri-plugin-drag";
 import { resolveResource } from '@tauri-apps/api/path'
 
@@ -103,8 +103,7 @@ const WaveformPlayer = ({
 
     useEffect(() => {
         console.log('we in here')
-        // Need to do this whole thing in a useEffect because this fucking function is async.
-        // Useless re-render, smh.
+        // Need to do this whole thing in a useEffect because this function is async.
         resolveResource(`resources/${color}_stem_icon.png`)
             .then(result => {
                 console.log('result:', result)
@@ -189,6 +188,8 @@ const TrackView = ({
     const projectFilePath = `${project.base_dir}/project_data/${project._id}/main.mp3`
     const webFilePath = convertFileSrc(projectFilePath)
     const [extractStemsLoading, setExtractStemsLoading] = useState<boolean>(false)
+    const [extractVocalInstrumentalLoading, setExtractVocalInstrumentalLoading] = useState<boolean>(false)
+    const [downloadingStems, setDownloadingStems] = useState<boolean>(false)
 
     async function handleStemExtractClick() {
         setExtractStemsLoading(true)
@@ -198,6 +199,32 @@ const TrackView = ({
             })
             .catch(e => console.log('Error splitting stems:', e))
             .finally(() => setExtractStemsLoading(false))
+    }
+
+    async function handleVocalInstrumentalExtractClick() {
+        setExtractVocalInstrumentalLoading(true)
+        splitVocalInstrumental(project._id)
+            .then((stems) => {
+                addStems(project._id, stems)
+            })
+            .catch(e => console.log('Error splitting vocal/instrumental:', e))
+            .finally(() => setExtractVocalInstrumentalLoading(false))
+    }
+
+    async function handleDownloadStems() {
+        if (project.stem_paths.length === 0) {
+            alert('ダウンロードするstemがありません')
+            return
+        }
+        setDownloadingStems(true)
+        try {
+            await downloadStemsAsZip(project._id, project.stem_paths)
+        } catch (error) {
+            console.error('Error downloading stems:', error)
+            alert('ダウンロードに失敗しました: ' + (error instanceof Error ? error.message : String(error)))
+        } finally {
+            setDownloadingStems(false)
+        }
     }
     
     console.log('stem_paths', project.stem_paths)
@@ -238,12 +265,6 @@ const TrackView = ({
                         </Flex>
                         <WaveformPlayer path={webFilePath} color='purple' />
                     </Flex>
-                    <Flex
-                        mt='22px'
-                    >
-                        <TrackDetails />
-                    </Flex>
-
                     <Divider
                         mt='32px'
                         borderColor='#5A5A5E'
@@ -260,49 +281,81 @@ const TrackView = ({
                     </Flex>
 
                     {project.stem_paths.length !== 0 && (
-                        <Grid
-                            templateColumns='repeat(2, minmax(0, 1fr))'
-                            gap='16px'
-                            mb='32px'
-                        >
-                            {project.stem_paths.map((stemPath, idx) => (
-                                <GridItem>
-                                    <Flex
-                                        width='100%'
-                                        direction='column'
-                                    >
+                        <>
+                            <Grid
+                                templateColumns='repeat(2, minmax(0, 1fr))'
+                                gap='16px'
+                                mb='32px'
+                            >
+                                {project.stem_paths.map((stemPath, idx) => (
+                                    <GridItem key={idx}>
                                         <Flex
-                                            mb='4px'
-                                            fontSize='12px'
-                                            ml='1px'
-                                            fontWeight={500}
-                                            color='#5A5A5E'
+                                            width='100%'
+                                            direction='column'
                                         >
-                                            {getFilenameFromPath(stemPath)}
+                                            <Flex
+                                                mb='4px'
+                                                fontSize='12px'
+                                                ml='1px'
+                                                fontWeight={500}
+                                                color='#5A5A5E'
+                                            >
+                                                {getFilenameFromPath(stemPath)}
+                                            </Flex>
+                                            <WaveformPlayer
+                                                filePath={stemPath}
+                                                path={convertFileSrc(stemPath)}
+                                                color={COLOR_ORDER[idx % COLOR_ORDER.length] as Color}
+                                                height={30}
+                                                barWidth={3}
+                                            />
                                         </Flex>
-                                        <WaveformPlayer
-                                            filePath={stemPath}
-                                            path={convertFileSrc(stemPath)}
-                                            color={COLOR_ORDER[idx % COLOR_ORDER.length] as Color}
-                                            height={30}
-                                            barWidth={3}
-                                        />
-                                    </Flex>
-                                </GridItem>
-                            ))}
-                        </Grid>
+                                    </GridItem>
+                                ))}
+                            </Grid>
+                            <DarkMode>
+                                <Button
+                                    width='220px'
+                                    leftIcon={<FiDownload />}
+                                    onClick={handleDownloadStems}
+                                    isLoading={downloadingStems}
+                                    mb='16px'
+                                    colorScheme="green"
+                                >
+                                    Download Stems as ZIP
+                                </Button>
+                            </DarkMode>
+                        </>
                     )}
 
-                    <DarkMode>
-                        <Button
-                            width='200px'
-                            leftIcon={<FaAssistiveListeningSystems />}
-                            onClick={handleStemExtractClick}
-                            isLoading={extractStemsLoading}
-                        >
-                            Extract stems
-                        </Button>
-                    </DarkMode>
+                    <Flex
+                        gap='12px'
+                        flexWrap='wrap'
+                    >
+                        <DarkMode>
+                            <Button
+                                width='200px'
+                                leftIcon={<FaAssistiveListeningSystems />}
+                                onClick={handleStemExtractClick}
+                                isLoading={extractStemsLoading}
+                                isDisabled={extractVocalInstrumentalLoading}
+                            >
+                                Extract stems
+                            </Button>
+                        </DarkMode>
+                        <DarkMode>
+                            <Button
+                                width='220px'
+                                leftIcon={<FaMicrophone />}
+                                onClick={handleVocalInstrumentalExtractClick}
+                                isLoading={extractVocalInstrumentalLoading}
+                                isDisabled={extractStemsLoading}
+                                colorScheme="purple"
+                            >
+                                Vocal / Instrumental
+                            </Button>
+                        </DarkMode>
+                    </Flex>
                 </Flex>
             </Flex>
         </Flex>
@@ -311,6 +364,7 @@ const TrackView = ({
 
 const ProjectController = () => {
     const addProject = useProjectStore(state => state.addProject)
+    const setProjects = useProjectStore(state => state.setProjects)
     const currentProject = useProjectStore(state => state.projects[state.selectedProjectId])
 
     // Hover control state
@@ -339,7 +393,18 @@ const ProjectController = () => {
 
                     createProject(filePath)
                         .then(project => {
+                            console.log("Project created successfully:", project)
                             addProject(project)
+                            // プロジェクトリストを再読み込みして、サイドバーとメイン画面を更新
+                            return getAllProjects()
+                        })
+                        .then(projects => {
+                            console.log("Refreshing project list:", projects)
+                            setProjects(projects)
+                        })
+                        .catch(error => {
+                            console.error("Failed to create project:", error)
+                            alert("プロジェクトの作成に失敗しました: " + (error instanceof Error ? error.message : String(error)))
                         })
                 } else {
                     setFileOk(false)
@@ -352,7 +417,7 @@ const ProjectController = () => {
         return () => {
             unlistenPromise.then((u) => u())
         }
-    }, [])
+    }, [addProject, setProjects])
 
     if (!currentProject) {
         return (

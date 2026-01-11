@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "LIBTORCH=\"$(pwd)/libtorch\" DYLD_LIBRARY_PATH=\"$(pwd)/libtorch/lib:${DYLD_LIBRARY_PATH:-}\" npx tauri",
+    "tauri:build": "LIBTORCH=\"$(pwd)/libtorch\" DYLD_LIBRARY_PATH=\"$(pwd)/libtorch/lib:${DYLD_LIBRARY_PATH:-}\" npx tauri build",
+    "tauri:dev": "lsof -ti:1420 | xargs kill -9 2>/dev/null || true; LIBTORCH=\"$(pwd)/libtorch\" DYLD_LIBRARY_PATH=\"$(pwd)/libtorch/lib:${DYLD_LIBRARY_PATH:-}\" npx tauri dev"
   },
   "dependencies": {
     "@chakra-ui/react": "^2.8.2",

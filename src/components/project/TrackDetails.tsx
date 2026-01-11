@@ -20,7 +20,12 @@ const TrackDetailItem = (props: { heading: string; children: any }) => {
     )
 }
 
-const TrackDetails = () => {
+type TrackDetailsProps = {
+    bpm?: number | null
+    key?: string | null
+}
+
+const TrackDetails = ({ bpm, key: keyValue }: TrackDetailsProps) => {
     return (
         <Flex 
             direction="column"
@@ -39,8 +44,12 @@ const TrackDetails = () => {
                 // bg='tomato'
                 templateColumns='repeat(5, minmax(0, 1fr))'
             >
-                <TrackDetailItem heading="BPM">172</TrackDetailItem>
-                <TrackDetailItem heading="Key">C major</TrackDetailItem>
+                <TrackDetailItem heading="BPM">
+                    {bpm ? Math.round(bpm) : '--'}
+                </TrackDetailItem>
+                <TrackDetailItem heading="Key">
+                    {keyValue || '--'}
+                </TrackDetailItem>
             </Grid>
         </Flex>
     )

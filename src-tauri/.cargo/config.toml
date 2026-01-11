@@ -1,2 +1,8 @@
 [target.aarch64-apple-darwin]
 linker = "c++"
+
+[env]
+# LIBTORCH環境変数を設定（torch-sysのビルドスクリプトで使用される）
+# 注: .cargo/config.tomlの[env]セクションは実際にはサポートされていないため、
+# ビルド前にLIBTORCH環境変数を設定する必要があります
+# export LIBTORCH="$(pwd)/libtorch" を実行してからビルドしてください

@@ -29,3 +29,10 @@ src-tauri/models/2stems
 src-tauri/models/4stems
 src-tauri/models/5stems
 result
+
+# Error logs
+error.txt
+
+# libtorch (should be downloaded separately)
+libtorch/
+libtorch-macos-arm64-2.2.0.zip

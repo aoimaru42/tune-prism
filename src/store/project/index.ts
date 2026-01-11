@@ -47,7 +47,7 @@ const useProjectStore = create<StoreState>()((set) => ({
     selectProject: (id) => {
         set((state) => {
             if (!state.projects[id]) {
-                console.log('Project does not exist, what the fuck happened?')
+                console.log('Project does not exist')
                 return state
             }
 
@@ -60,7 +60,7 @@ const useProjectStore = create<StoreState>()((set) => ({
     addStems: (id, stems) => {
         set((state) => {
             if (!state.projects[id]) {
-                console.log('project does not exist, what the fuck happened?')
+                console.log('project does not exist')
                 return state
             }
 

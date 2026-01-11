@@ -48,7 +48,11 @@ impl std::fmt::Debug for PcmAudioData {
 pub fn decode_file(path: &Path) -> Result<PcmAudioData> {
     let ext = path.extension();
 
-    let src = File::open(path).unwrap();
+    let src = File::open(path)
+        .map_err(|e| super::Error::UnexpectedError {
+            message: format!("Failed to open file: {}", path.display()),
+            source: Some(Box::new(e)),
+        })?;
 
     let mss = MediaSourceStream::new(Box::new(src), Default::default());
     let mut hint = Hint::new();
@@ -62,7 +66,7 @@ pub fn decode_file(path: &Path) -> Result<PcmAudioData> {
     fmt_opts.enable_gapless = true;
     let probed = symphonia::default::get_probe()
         .format(&hint, mss, &fmt_opts, &meta_opts)
-        .expect("unsupported format");
+        .map_err(|e| super::Error::SymphoniaError { source: e })?;
 
     let mut format = probed.format;
 
@@ -71,7 +75,10 @@ pub fn decode_file(path: &Path) -> Result<PcmAudioData> {
         .tracks()
         .iter()
         .find(|t| t.codec_params.codec != CODEC_TYPE_NULL)
-        .expect("no supported audio tracks");
+        .ok_or_else(|| super::Error::UnexpectedError {
+            message: "No supported audio tracks found in the file".to_string(),
+            source: None,
+        })?;
 
     let track_id = track.id;
 
@@ -81,10 +88,23 @@ pub fn decode_file(path: &Path) -> Result<PcmAudioData> {
 
     let mut decoder = symphonia::default::get_codecs()
         .make(&track.codec_params, &dec_opts)
-        .expect("unsupported codec");
+        .map_err(|e| super::Error::SymphoniaError { source: e })?;
 
-    let nb_channels = track.codec_params.channels.unwrap().count();
-    let sample_rate = track.codec_params.sample_rate.unwrap() as usize;
+    let nb_channels = track
+        .codec_params
+        .channels
+        .ok_or_else(|| super::Error::UnexpectedError {
+            message: "Audio track has no channel information".to_string(),
+            source: None,
+        })?
+        .count();
+    let sample_rate = track
+        .codec_params
+        .sample_rate
+        .ok_or_else(|| super::Error::UnexpectedError {
+            message: "Audio track has no sample rate information".to_string(),
+            source: None,
+        })? as usize;
 
     let mut buffer: Vec<Vec<f32>> = (0..nb_channels).map(|_| Vec::new()).collect();
     'decode: loop {
@@ -138,7 +158,21 @@ pub fn decode_file(path: &Path) -> Result<PcmAudioData> {
 
     let samples = buffer;
 
+    if samples.is_empty() {
+        return Err(super::Error::UnexpectedError {
+            message: "No audio data was decoded from the file".to_string(),
+            source: None,
+        });
+    }
+
     let length = samples[0].len();
+
+    if length == 0 {
+        return Err(super::Error::UnexpectedError {
+            message: "Decoded audio data is empty".to_string(),
+            source: None,
+        });
+    }
 
     Ok(PcmAudioData {
         samples,
@@ -156,7 +190,11 @@ pub fn encode_pcm_to_wav(audio: PcmAudioData, path: &Path) -> Result<()> {
         sample_format: hound::SampleFormat::Float,
     };
 
-    let mut writer = hound::WavWriter::create(path, wav_spec).unwrap();
+    let mut writer = hound::WavWriter::create(path, wav_spec)
+        .map_err(|e| super::Error::UnexpectedError {
+            message: format!("Failed to create WAV file: {}", path.display()),
+            source: Some(Box::new(e)),
+        })?;
 
     for i in 0..audio.length {
         for channel in audio.samples.iter() {

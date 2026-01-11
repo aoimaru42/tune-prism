@@ -19,6 +19,11 @@
         "all": false,
         "open": true
       },
+      "dialog": {
+        "all": true,
+        "open": true,
+        "save": true
+      },
       "protocol": {
         "all": true,
         "asset": true,
@@ -53,7 +58,7 @@
             "../libtorch/lib/libtorch_cpu.dylib",
             "../libtorch/lib/libtorch.dylib",
             "../libtorch/lib/libc10.dylib",
-            "/opt/homebrew/Cellar/libomp/18.1.2/lib/libomp.dylib"
+            "../libtorch/lib/libomp.dylib"
         ]
       },
       "resources": [

@@ -4,6 +4,8 @@ export type Project = {
     created_at: number
     name: string
     stem_paths: string[]
+    bpm?: number | null
+    key?: string | null
 }
 
 export interface StoreState {

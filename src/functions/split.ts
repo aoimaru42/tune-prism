@@ -23,3 +23,15 @@ export async function splitStems(projectId: string): Promise<string[]> {
         throw new Error(result.message)
     }
 }
+
+export async function splitVocalInstrumental(projectId: string): Promise<string[]> {
+    const result: StemSplitResult = await invoke('split_vocal_instrumental_stems', {
+        projectId: projectId
+    })
+
+    if (result.status === 'Success') {
+        return result.stems
+    } else{
+        throw new Error(result.message)
+    }
+}
