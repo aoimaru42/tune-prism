@@ -1,27 +1,31 @@
 # Tune Prism
 
-Split a track into 4 stems: vocals, drums, bass and others. Based on Facebook's HTDemucs model ([repo](https://www.google.com/search?q=demucs+facebook&oq=demucs+fac&sourceid=chrome&ie=UTF-8)).
+> このリポジトリは [hedonhermdev/tune-prism](https://github.com/hedonhermdev/tune-prism) のフォークです。
 
+楽曲を4つのステム（ボーカル、ドラム、ベース、その他）に分割するアプリケーション。FacebookのHTDemucsモデルをベースにしています。
 
-Built with Rust, Tauri, PyTorch and React. 
+## 技術スタック
 
-## Demo
-Simply drag a track in, extract stems and drag your stems out. 
+Rust、Tauri、PyTorch、Reactで構築されています。
+
+## デモ
+
+トラックをドラッグ＆ドロップして、ステムを抽出し、ステムをドラッグして出力します。
 
 https://github.com/user-attachments/assets/584cf59e-ef4b-4f24-913d-dc52d7549609
 
+## 試す
 
-## Try it Out
-For M1 macs running MacOS, there's a prebuilt binary available on the releases page. Currently, that's the only platform I have built and tested the app on. Porting to other platforms is a bit of work and I only own a MacBook. If you can make the app run on Linux or Windows machines, I will happily accept your PR. 
+M1 MacでMacOSを実行している場合、リリースページに事前ビルドされたバイナリがあります。現在、これがビルドしてテストした唯一のプラットフォームです。他のプラットフォームへの移植には作業が必要で、MacBookしか持っていないためです。LinuxやWindowsマシンでアプリを実行できるようにしてくれるなら、喜んでPRを受け入れます。
 
-## Building Locally
+## ローカルでビルド
 
-These instructions have been tested to work on an M1 Macbook Pro running MacOS 
+これらの手順は、MacOSを実行しているM1 Macbook Proで動作することが確認されています。
 
-### Requirements
+### 必要なもの
 
 #### Rust and Cargo
-You can install Rust using [rustup](rustup.rs). I don't know what the MSRV is but I used `v1.79.0` while building the app. 
+[rustup](rustup.rs)を使用してRustをインストールできます。MSRVはわかりませんが、アプリをビルドする際に`v1.79.0`を使用しました。
 
 ```bash
 $ rustc --version
@@ -30,6 +34,7 @@ rustc 1.79.0 (129f3b996 2024-06-10)
 $ cargo --version
 cargo 1.79.0 (ffa9cf99a 2024-06-03)
 ```
+
 #### Node and NPM
 ```bash
 $ brew install node@20
@@ -43,50 +48,51 @@ $ npm --version
 
 #### PyTorch
 
-You can either use `libtorch` or provide the path to a PYTORCH installation. I found it easier to use `libtorch` directly. 
+`libtorch`を使用するか、PYTORCHインストールへのパスを提供できます。直接`libtorch`を使用する方が簡単でした。
 
 ```bash
 $ wget https://download.pytorch.org/libtorch/cpu/libtorch-macos-arm64-2.2.0.zip
 $ unzip libtorch-macos-arm64-2.2.0.zip
 ```
 
-#### Misc Dependencies
+#### その他の依存関係
 
 ```bash
 $ brew install libomp
 ```
 
-### Building the app
+### アプリのビルド
 
-- Clone the repo
+- リポジトリをクローン
 ```bash
-$ git clone https://github.com/hedonhermdev/tune-prism && cd tune-prism
+$ git clone https://github.com/aoimaru42/tune-prism && cd tune-prism
 ```
 
-- Install npm dependencies
+- npmの依存関係をインストール
 ```bash
 $ npm install
 ```
 
-- Download the models
-You can use the ``get_models.sh`` script to download the models
+- モデルをダウンロード
+`get_models.sh`スクリプトを使用してモデルをダウンロードできます
+
 ```bash
 $ ./get_models.sh
 ```
 
-- Copy `libtorch` to the repo. 
+- `libtorch`をリポジトリにコピー
 ```
 $ cp PATH_TO_LIBTORCH ./libtorch
 $ export LIBTORCH=$(realpath ./libtorch) 
 ```
 
-After this you're all set to start building the app. 
+これで、アプリのビルドを開始する準備が整いました。
 
 ```bash
 $ npm run tauri build
-$ npm run tauri dev # for development
+$ npm run tauri dev # 開発用
 ```
 
-# Contributing
+# コントリビューション
 
-Just open a PR :)
+PRを開いてください :)
